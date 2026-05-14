@@ -37,14 +37,23 @@ pipeline {
         stage('Resolve Branch') {
             steps {
                 script {
-                    env.ACTUAL_BRANCH = powershell(
+                    def gitBranch = powershell(
                         returnStdout: true,
-                        script: 'git branch --show-current'
+                        script: '''
+                            $branch = git branch --show-current
+                            if (-not $branch) {
+                                $branch = git rev-parse --abbrev-ref HEAD
+                            }
+                            $branch
+                        '''
                     ).trim()
-                    if (!env.ACTUAL_BRANCH) {
-                        env.ACTUAL_BRANCH = env.BRANCH_NAME ?: ''
-                    }
+                    env.ACTUAL_BRANCH = gitBranch ?: (env.BRANCH_NAME ?: env.GIT_BRANCH ?: '')
+                    env.ACTUAL_BRANCH = env.ACTUAL_BRANCH
+                        .replace('origin/', '')
+                        .replace('*/', '')
+                        .trim()
                     echo "Building branch: ${env.ACTUAL_BRANCH}"
+                    echo "DEPLOY parameter: ${params.DEPLOY}"
                 }
             }
         }
