@@ -85,7 +85,7 @@ pipeline {
                     powershell '''
                         $ErrorActionPreference = "Stop"
                         New-Item -ItemType Directory -Force -Path "artifacts" | Out-Null
-                        & $env:PYTHON -m madewithml.train train-model `
+                        & $env:PYTHON -m madewithml.train `
                             --experiment-name "$env:EXPERIMENT_NAME" `
                             --dataset-loc "datasets/dataset.csv" `
                             --train-loop-config '{"dropout_p":0.5,"lr":0.0001,"lr_factor":0.8,"lr_patience":3}' `
@@ -121,7 +121,7 @@ pipeline {
                 dir('MLOpsFull') {
                     powershell '''
                         $ErrorActionPreference = "Stop"
-                        & $env:PYTHON -m madewithml.evaluate evaluate `
+                        & $env:PYTHON -m madewithml.evaluate `
                             --run-id "$env:RUN_ID" `
                             --dataset-loc "datasets/holdout.csv" `
                             --results-fp "$env:EVAL_RESULTS"
