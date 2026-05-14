@@ -154,7 +154,12 @@ from madewithml.evaluate import evaluate
 
 if ray.is_initialized():
     ray.shutdown()
-ray.init(num_gpus=0, runtime_env={"env_vars": {"GITHUB_USERNAME": os.environ["GITHUB_USERNAME"]}})
+ray.init(
+    num_cpus=1,
+    num_gpus=0,
+    object_store_memory=512 * 1024 * 1024,
+    runtime_env={"env_vars": {"GITHUB_USERNAME": os.environ["GITHUB_USERNAME"]}},
+)
 
 evaluate(
     run_id=os.environ["RUN_ID"],
