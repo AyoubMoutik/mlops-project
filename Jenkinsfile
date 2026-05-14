@@ -216,6 +216,7 @@ import json
 import os
 
 import ray
+from numpyencoder import NumpyEncoder
 
 from madewithml import predict
 
@@ -246,7 +247,7 @@ payload = {
     "results": results,
 }
 with open("artifacts/smoke_response.json", "w") as fp:
-    json.dump(payload, fp, indent=2)
+    json.dump(payload, fp, indent=2, cls=NumpyEncoder)
     fp.write("\\n")
 '@
                         $script | & $env:PYTHON -
