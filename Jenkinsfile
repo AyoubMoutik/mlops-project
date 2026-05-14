@@ -54,12 +54,14 @@ pipeline {
                 powershell '''
                     $ErrorActionPreference = "Stop"
                     py -3.10 --version
-                    if (Test-Path ".venv") {
-                        Remove-Item ".venv" -Recurse -Force
+                    if (-not (Test-Path ".venv\\Scripts\\python.exe")) {
+                        py -3.10 -m venv ".venv"
+                        & $env:PYTHON -m pip install --upgrade pip
+                        & $env:PIP install -r "$env:PROJECT_DIR\\requirements.txt"
                     }
-                    py -3.10 -m venv ".venv"
-                    & $env:PYTHON -m pip install --upgrade pip
-                    & $env:PIP install -r "$env:PROJECT_DIR\\requirements.txt"
+                    else {
+                        Write-Host "Reusing existing virtual environment at .venv"
+                    }
                     New-Item -ItemType Directory -Force -Path "$env:PROJECT_DIR\\artifacts" | Out-Null
                     New-Item -ItemType Directory -Force -Path "$env:MLOPS_STORAGE_DIR" | Out-Null
                 '''
