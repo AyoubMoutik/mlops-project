@@ -1,0 +1,8 @@
+.venv/
+.mlops-storage/
+__pycache__/
+*.py[cod]
+
+MLOpsFull/artifacts/
+MLOpsFull/logs/
+MLOpsFull/efs/
