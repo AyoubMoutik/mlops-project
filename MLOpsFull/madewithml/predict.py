@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 from typing import Any, Dict, Iterable, List
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse
 
 import numpy as np
 import ray
@@ -18,6 +18,26 @@ from madewithml.utils import collate_fn
 
 # Initialize Typer CLI app
 app = typer.Typer()
+
+
+def local_path_from_uri(uri: str) -> Path:
+    """Convert a local file URI to a filesystem path.
+
+    MLflow can persist Windows artifact URIs as `file://C:\\...`, where the
+    drive-containing portion is parsed as the URI netloc. Preserve both pieces
+    so Ray can load the saved trial artifact directory.
+    """
+    parsed = urlparse(uri)
+    if parsed.scheme != "file":
+        return Path(uri)
+
+    if parsed.netloc:
+        return Path(unquote(parsed.netloc + parsed.path))
+
+    path = unquote(parsed.path)
+    if len(path) >= 3 and path[0] == "/" and path[2] == ":":
+        path = path[1:]
+    return Path(path)
 
 
 def decode(indices: Iterable[Any], index_to_class: Dict) -> List:
@@ -128,7 +148,7 @@ def get_best_checkpoint(run_id: str) -> TorchCheckpoint:  # pragma: no cover, ml
     Returns:
         TorchCheckpoint: Best checkpoint from the run.
     """
-    artifact_dir = urlparse(mlflow.get_run(run_id).info.artifact_uri).path  # get path from mlflow
+    artifact_dir = local_path_from_uri(mlflow.get_run(run_id).info.artifact_uri)  # get path from mlflow
     results = Result.from_path(artifact_dir)
     return results.best_checkpoints[0][0]
 
