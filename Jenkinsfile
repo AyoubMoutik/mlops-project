@@ -148,7 +148,13 @@ train_model(
                         $script = @'
 import os
 
+import ray
+
 from madewithml.evaluate import evaluate
+
+if ray.is_initialized():
+    ray.shutdown()
+ray.init(num_gpus=0, runtime_env={"env_vars": {"GITHUB_USERNAME": os.environ["GITHUB_USERNAME"]}})
 
 evaluate(
     run_id=os.environ["RUN_ID"],
