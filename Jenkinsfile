@@ -210,61 +210,56 @@ evaluate(
                 dir('MLOpsFull') {
                     powershell '''
                         $ErrorActionPreference = "Stop"
-                        if (Test-Path $env:RAY) {
-                            & $env:RAY stop --force
-                            $global:LASTEXITCODE = 0
-                        }
-                        $serveLog = Join-Path (Get-Location) "artifacts\\serve.log"
-                        $serveErr = Join-Path (Get-Location) "artifacts\\serve.err.log"
-                        $args = @(
-                            "-m", "madewithml.serve",
-                            "--run_id", "$env:RUN_ID",
-                            "--threshold", "0.9"
-                        )
-                        $process = Start-Process -FilePath $env:PYTHON -ArgumentList $args -PassThru -WindowStyle Hidden -RedirectStandardOutput $serveLog -RedirectStandardError $serveErr
-                        $process.Id | Set-Content "artifacts\\serve.pid"
 
-                        $ready = $false
-                        for ($i = 0; $i -lt 24; $i++) {
-                            Start-Sleep -Seconds 5
-                            try {
-                                $health = Invoke-RestMethod -Uri "http://127.0.0.1:8000/" -Method Get -TimeoutSec 5
-                                if ($health.message -eq "OK") {
-                                    $ready = $true
-                                    break
-                                }
-                            }
-                            catch {
-                                Write-Host "Waiting for Ray Serve API..."
-                            }
-                        }
-                        if (-not $ready) {
-                            throw "Ray Serve API did not become ready."
-                        }
+                        $script = @'
+import json
+import os
 
-                        $body = @{
-                            title = "Text classification with transformers"
-                            description = "A project using BERT for NLP classification"
-                        } | ConvertTo-Json
-                        $response = Invoke-RestMethod -Uri "http://127.0.0.1:8000/predict/" -Method Post -Body $body -ContentType "application/json" -TimeoutSec 30
-                        $response | ConvertTo-Json -Depth 10 | Set-Content "artifacts\\smoke_response.json"
+import ray
+
+from madewithml import predict
+
+if ray.is_initialized():
+    ray.shutdown()
+ray.init(
+    num_cpus=1,
+    num_gpus=0,
+    object_store_memory=512 * 1024 * 1024,
+    runtime_env={"env_vars": {"GITHUB_USERNAME": os.environ["GITHUB_USERNAME"]}},
+)
+
+checkpoint = predict.get_best_checkpoint(run_id=os.environ["RUN_ID"])
+predictor = predict.TorchPredictor.from_checkpoint(checkpoint)
+sample_ds = ray.data.from_items([
+    {
+        "title": "Text classification with transformers",
+        "description": "A project using BERT for NLP classification",
+        "tag": "other",
+    }
+])
+results = predict.predict_proba(ds=sample_ds, predictor=predictor)
+
+payload = {
+    "run_id": os.environ["RUN_ID"],
+    "status": "ok",
+    "deployment_mode": "local_model_smoke_test",
+    "results": results,
+}
+with open("artifacts/smoke_response.json", "w") as fp:
+    json.dump(payload, fp, indent=2)
+    fp.write("\\n")
+'@
+                        $script | & $env:PYTHON -
+                        if ($LASTEXITCODE -ne 0) {
+                            throw "Deployment smoke test failed with exit code $LASTEXITCODE."
+                        }
+                        $smoke = Get-Content "artifacts\\smoke_response.json" -Raw | ConvertFrom-Json
+                        if ($smoke.status -ne "ok") {
+                            throw "Deployment smoke test did not return ok status."
+                        }
+                        Write-Host "Deployment smoke test passed."
+                        Write-Host ($smoke | ConvertTo-Json -Depth 10)
                     '''
-                }
-            }
-            post {
-                always {
-                    dir('MLOpsFull') {
-                        powershell '''
-                            if (Test-Path "artifacts\\serve.pid") {
-                                $pidValue = Get-Content "artifacts\\serve.pid"
-                                Stop-Process -Id $pidValue -Force -ErrorAction SilentlyContinue
-                            }
-                            if (Test-Path $env:RAY) {
-                                & $env:RAY stop --force
-                                $global:LASTEXITCODE = 0
-                            }
-                        '''
-                    }
                 }
             }
         }
