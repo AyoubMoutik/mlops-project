@@ -85,17 +85,38 @@ pipeline {
                     powershell '''
                         $ErrorActionPreference = "Stop"
                         New-Item -ItemType Directory -Force -Path "artifacts" | Out-Null
-                        & $env:PYTHON -m madewithml.train `
-                            --experiment-name "$env:EXPERIMENT_NAME" `
-                            --dataset-loc "datasets/dataset.csv" `
-                            --train-loop-config '{"dropout_p":0.5,"lr":0.0001,"lr_factor":0.8,"lr_patience":3}' `
-                            --num-workers 1 `
-                            --cpu-per-worker 1 `
-                            --gpu-per-worker 0 `
-                            --num-samples $env:NUM_SAMPLES `
-                            --num-epochs $env:NUM_EPOCHS `
-                            --batch-size $env:BATCH_SIZE `
-                            --results-fp "$env:TRAIN_RESULTS"
+
+                        $script = @'
+import json
+import os
+
+import ray
+
+from madewithml.train import train_model
+
+if ray.is_initialized():
+    ray.shutdown()
+ray.init(num_gpus=0, runtime_env={"env_vars": {"GITHUB_USERNAME": os.environ["GITHUB_USERNAME"]}})
+
+train_model(
+    experiment_name=os.environ["EXPERIMENT_NAME"],
+    dataset_loc="datasets/dataset.csv",
+    train_loop_config=json.dumps({
+        "dropout_p": 0.5,
+        "lr": 0.0001,
+        "lr_factor": 0.8,
+        "lr_patience": 3,
+    }),
+    num_workers=1,
+    cpu_per_worker=1,
+    gpu_per_worker=0,
+    num_samples=int(os.environ["NUM_SAMPLES"]),
+    num_epochs=int(os.environ["NUM_EPOCHS"]),
+    batch_size=int(os.environ["BATCH_SIZE"]),
+    results_fp=os.environ["TRAIN_RESULTS"],
+)
+'@
+                        $script | & $env:PYTHON -
                         if ($LASTEXITCODE -ne 0) {
                             throw "Training command failed with exit code $LASTEXITCODE."
                         }
@@ -121,10 +142,19 @@ pipeline {
                 dir('MLOpsFull') {
                     powershell '''
                         $ErrorActionPreference = "Stop"
-                        & $env:PYTHON -m madewithml.evaluate `
-                            --run-id "$env:RUN_ID" `
-                            --dataset-loc "datasets/holdout.csv" `
-                            --results-fp "$env:EVAL_RESULTS"
+
+                        $script = @'
+import os
+
+from madewithml.evaluate import evaluate
+
+evaluate(
+    run_id=os.environ["RUN_ID"],
+    dataset_loc="datasets/holdout.csv",
+    results_fp=os.environ["EVAL_RESULTS"],
+)
+'@
+                        $script | & $env:PYTHON -
                         if ($LASTEXITCODE -ne 0) {
                             throw "Evaluation command failed with exit code $LASTEXITCODE."
                         }
