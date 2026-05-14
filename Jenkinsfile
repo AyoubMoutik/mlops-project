@@ -96,6 +96,9 @@ pipeline {
                             --num-epochs $env:NUM_EPOCHS `
                             --batch-size $env:BATCH_SIZE `
                             --results-fp "$env:TRAIN_RESULTS"
+                        if ($LASTEXITCODE -ne 0) {
+                            throw "Training command failed with exit code $LASTEXITCODE."
+                        }
 
                         $train = Get-Content "$env:TRAIN_RESULTS" -Raw | ConvertFrom-Json
                         if (-not $train.run_id) {
@@ -122,6 +125,9 @@ pipeline {
                             --run-id "$env:RUN_ID" `
                             --dataset-loc "datasets/holdout.csv" `
                             --results-fp "$env:EVAL_RESULTS"
+                        if ($LASTEXITCODE -ne 0) {
+                            throw "Evaluation command failed with exit code $LASTEXITCODE."
+                        }
 
                         $eval = Get-Content "$env:EVAL_RESULTS" -Raw | ConvertFrom-Json
                         $f1 = [double]$eval.overall.f1
