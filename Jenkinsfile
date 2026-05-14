@@ -47,12 +47,18 @@ pipeline {
                             $branch
                         '''
                     ).trim()
-                    env.ACTUAL_BRANCH = gitBranch ?: (env.BRANCH_NAME ?: env.GIT_BRANCH ?: '')
+                    def jenkinsBranch = env.BRANCH_NAME ?: env.GIT_BRANCH ?: ''
+                    env.ACTUAL_BRANCH = gitBranch ?: jenkinsBranch
                     env.ACTUAL_BRANCH = env.ACTUAL_BRANCH
                         .replace('origin/', '')
                         .replace('*/', '')
                         .trim()
+                    env.SCM_BRANCH = jenkinsBranch
+                        .replace('origin/', '')
+                        .replace('*/', '')
+                        .trim()
                     echo "Building branch: ${env.ACTUAL_BRANCH}"
+                    echo "SCM branch: ${env.SCM_BRANCH}"
                     echo "DEPLOY parameter: ${params.DEPLOY}"
                 }
             }
@@ -197,7 +203,7 @@ evaluate(
             when {
                 allOf {
                     expression { return params.DEPLOY }
-                    expression { return env.ACTUAL_BRANCH == 'master' }
+                    expression { return env.ACTUAL_BRANCH == 'master' || env.SCM_BRANCH == 'master' }
                 }
             }
             steps {
