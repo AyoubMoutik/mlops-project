@@ -249,7 +249,8 @@ PY
 }
 
 void dockerRun(String command) {
-    def encodedCommand = command.stripIndent().trim().bytes.encodeBase64().toString()
+    def scriptName = "docker-stage-${env.BUILD_NUMBER}.sh"
+    writeFile file: scriptName, text: "#!/bin/sh\nset -eux\n${command.stripIndent().trim()}\n"
     sh """
         set -eux
         mkdir -p "\$WORKSPACE/\$PROJECT_DIR/artifacts"
@@ -262,7 +263,7 @@ void dockerRun(String command) {
             exit \$status
         }
         trap cleanup EXIT
-        docker run \
+        docker create \
             --name "\$container_name" \
             --shm-size=1g \
             -e GITHUB_USERNAME="\$GITHUB_USERNAME" \
@@ -277,6 +278,9 @@ void dockerRun(String command) {
             -e RUN_ID="\${RUN_ID:-}" \
             -v "\$MLOPS_DOCKER_VOLUME:/mlops-storage" \
             "\$IMAGE_NAME" \
-            sh -lc 'printf %s "${encodedCommand}" | base64 -d | sh -eux'
+            sh /tmp/jenkins-stage.sh
+        docker cp "${scriptName}" "\$container_name:/tmp/jenkins-stage.sh"
+        docker start -a "\$container_name"
     """
+    sh "rm -f '${scriptName}'"
 }
