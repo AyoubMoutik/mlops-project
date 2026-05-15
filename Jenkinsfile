@@ -214,8 +214,13 @@ PY
                 sh '''
                     set -eux
                     docker rm -f "$SERVICE_CONTAINER" >/dev/null 2>&1 || true
+                    monitoring_network_args=""
+                    if docker network inspect examprojet_default >/dev/null 2>&1; then
+                        monitoring_network_args="--network examprojet_default"
+                    fi
                     docker run -d \
                         --name "$SERVICE_CONTAINER" \
+                        $monitoring_network_args \
                         --shm-size=3g \
                         -p 8000:8000 \
                         -e GITHUB_USERNAME="$GITHUB_USERNAME" \
@@ -225,17 +230,25 @@ PY
                         "$IMAGE_NAME" \
                         python -m madewithml.serve --run_id "$RUN_ID"
 
+                    healthy=0
                     for attempt in $(seq 1 30); do
                         if curl --fail --silent http://localhost:8000/ > "$PROJECT_DIR/artifacts/deploy_health.json"; then
+                            healthy=1
                             break
                         fi
                         sleep 2
                     done
-                    curl --fail --silent http://localhost:8000/ | tee "$PROJECT_DIR/artifacts/deploy_health.json"
+                    if [ "$healthy" -ne 1 ]; then
+                        docker logs "$SERVICE_CONTAINER" > "$PROJECT_DIR/artifacts/deploy_container.log" 2>&1 || true
+                        echo "Model service did not become healthy. See deploy_container.log."
+                        exit 1
+                    fi
+                    curl --fail --silent http://localhost:8000/ > "$PROJECT_DIR/artifacts/deploy_health.json"
                     curl --fail --silent \
                         --header 'Content-Type: application/json' \
                         --data '{"title":"Text classification with transformers","description":"A project using BERT for NLP classification"}' \
-                        http://localhost:8000/predict/ | tee "$PROJECT_DIR/artifacts/smoke_response.json"
+                        http://localhost:8000/predict/ > "$PROJECT_DIR/artifacts/smoke_response.json"
+                    curl --fail --silent http://localhost:8000/metrics > "$PROJECT_DIR/artifacts/metrics_smoke.txt"
                 '''
             }
         }
