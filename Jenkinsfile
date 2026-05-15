@@ -216,7 +216,7 @@ PY
                     docker rm -f "$SERVICE_CONTAINER" >/dev/null 2>&1 || true
                     docker run -d \
                         --name "$SERVICE_CONTAINER" \
-                        --shm-size=1g \
+                        --shm-size=3g \
                         -p 8000:8000 \
                         -e GITHUB_USERNAME="$GITHUB_USERNAME" \
                         -e MLOPS_STORAGE_DIR="$MLOPS_STORAGE_DIR" \
@@ -265,7 +265,7 @@ void dockerRun(String command) {
         trap cleanup EXIT
         docker create \
             --name "\$container_name" \
-            --shm-size=1g \
+            --shm-size=3g \
             -e GITHUB_USERNAME="\$GITHUB_USERNAME" \
             -e MLOPS_STORAGE_DIR="\$MLOPS_STORAGE_DIR" \
             -e EXPERIMENT_NAME="\$EXPERIMENT_NAME" \
