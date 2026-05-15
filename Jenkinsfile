@@ -249,6 +249,7 @@ PY
 }
 
 void dockerRun(String command) {
+    def encodedCommand = command.stripIndent().trim().bytes.encodeBase64().toString()
     sh """
         set -eux
         mkdir -p "\$WORKSPACE/\$PROJECT_DIR/artifacts"
@@ -276,8 +277,6 @@ void dockerRun(String command) {
             -e RUN_ID="\${RUN_ID:-}" \
             -v "\$MLOPS_DOCKER_VOLUME:/mlops-storage" \
             "\$IMAGE_NAME" \
-            sh -s <<'DOCKER_SCRIPT'
-${command}
-DOCKER_SCRIPT
+            sh -lc 'printf %s "${encodedCommand}" | base64 -d | sh -eux'
     """
 }
