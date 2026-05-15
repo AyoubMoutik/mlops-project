@@ -251,11 +251,19 @@ PY
                         exit 1
                     fi
                     curl --fail --silent "$service_url/" > "$PROJECT_DIR/artifacts/deploy_health.json"
-                    curl --fail --silent \
+                    if ! curl --fail --silent --show-error \
                         --header 'Content-Type: application/json' \
                         --data '{"title":"Text classification with transformers","description":"A project using BERT for NLP classification"}' \
-                        "$service_url/predict/" > "$PROJECT_DIR/artifacts/smoke_response.json"
-                    curl --fail --silent "$service_url/metrics" > "$PROJECT_DIR/artifacts/metrics_smoke.txt"
+                        "$service_url/predict/" > "$PROJECT_DIR/artifacts/smoke_response.json"; then
+                        docker logs "$SERVICE_CONTAINER" > "$PROJECT_DIR/artifacts/deploy_container.log" 2>&1 || true
+                        echo "Prediction smoke test failed. See smoke_response.json and deploy_container.log."
+                        exit 1
+                    fi
+                    if ! curl --fail --silent --show-error "$service_url/metrics" > "$PROJECT_DIR/artifacts/metrics_smoke.txt"; then
+                        docker logs "$SERVICE_CONTAINER" > "$PROJECT_DIR/artifacts/deploy_container.log" 2>&1 || true
+                        echo "Metrics smoke test failed. See metrics_smoke.txt and deploy_container.log."
+                        exit 1
+                    fi
                 '''
             }
         }

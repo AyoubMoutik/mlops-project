@@ -68,7 +68,7 @@ def format_prob(prob: Iterable, index_to_class: Dict) -> Dict:
     """
     d = {}
     for i, item in enumerate(prob):
-        d[index_to_class[i]] = item
+        d[index_to_class[i]] = float(item)
     return d
 
 
