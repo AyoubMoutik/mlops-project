@@ -230,10 +230,15 @@ PY
                         -e RUN_ID="$RUN_ID" \
                         -v "$MLOPS_DOCKER_VOLUME:/mlops-storage" \
                         "$IMAGE_NAME" \
-                        python -m madewithml.serve --run_id "$RUN_ID"
+                        python -m madewithml.serve --run_id "$RUN_ID" --backend fastapi
 
                     healthy=0
-                    for attempt in $(seq 1 120); do
+                    for attempt in $(seq 1 45); do
+                        if ! docker ps --format '{{.Names}}' | grep -qx "$SERVICE_CONTAINER"; then
+                            docker logs "$SERVICE_CONTAINER" > "$PROJECT_DIR/artifacts/deploy_container.log" 2>&1 || true
+                            echo "Model service container exited before becoming healthy. See deploy_container.log."
+                            exit 1
+                        fi
                         if curl --fail --silent "$service_url/" > "$PROJECT_DIR/artifacts/deploy_health.json"; then
                             healthy=1
                             break

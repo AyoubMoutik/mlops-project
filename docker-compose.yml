@@ -33,7 +33,7 @@ services:
       MLOPS_STORAGE_DIR: /mlops-storage
     volumes:
       - mlops_storage:/mlops-storage
-    command: python -m madewithml.serve --run_id ${RUN_ID:-missing-run-id}
+    command: python -m madewithml.serve --run_id ${RUN_ID:-missing-run-id} --backend fastapi
     restart: unless-stopped
 
   prometheus:
