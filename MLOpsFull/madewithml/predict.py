@@ -1,5 +1,5 @@
 import json
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from typing import Any, Dict, Iterable, List
 from urllib.parse import unquote, urlparse
 
@@ -32,11 +32,14 @@ def local_path_from_uri(uri: str) -> Path:
         return Path(uri)
 
     if parsed.netloc:
-        return Path(unquote(parsed.netloc + parsed.path))
+        uri_path = unquote(parsed.netloc + parsed.path)
+        if len(parsed.netloc) >= 2 and parsed.netloc[1] == ":":
+            return PureWindowsPath(uri_path.replace("/", "\\"))
+        return Path(uri_path)
 
     path = unquote(parsed.path)
     if len(path) >= 3 and path[0] == "/" and path[2] == ":":
-        path = path[1:]
+        return PureWindowsPath(path[1:].replace("/", "\\"))
     return Path(path)
 
 

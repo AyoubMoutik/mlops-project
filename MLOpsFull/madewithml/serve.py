@@ -1,5 +1,6 @@
 import argparse
 import os
+import time
 from http import HTTPStatus
 from typing import Dict
 
@@ -69,8 +70,11 @@ class ModelDeployment:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--run_id", help="run ID to use for serving.")
+    parser.add_argument("--run_id", required=True, help="run ID to use for serving.")
     parser.add_argument("--threshold", type=float, default=0.9, help="threshold for `other` class.")
     args = parser.parse_args()
     ray.init(num_gpus=0, runtime_env={"env_vars": {"GITHUB_USERNAME": os.environ["GITHUB_USERNAME"]}})
+    serve.start(http_options={"host": "0.0.0.0", "port": 8000})
     serve.run(ModelDeployment.bind(run_id=args.run_id, threshold=args.threshold))
+    while True:
+        time.sleep(3600)
