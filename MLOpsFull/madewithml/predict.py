@@ -4,6 +4,7 @@ from typing import Any, Dict, Iterable, List
 from urllib.parse import unquote, urlparse
 
 import numpy as np
+import pandas as pd
 import ray
 import typer
 from numpyencoder import NumpyEncoder
@@ -12,6 +13,7 @@ from ray.train.torch.torch_checkpoint import TorchCheckpoint
 from typing_extensions import Annotated
 
 from madewithml.config import logger, mlflow
+from madewithml import data
 from madewithml.data import CustomPreprocessor
 from madewithml.models import FinetunedLLM
 from madewithml.utils import collate_fn
@@ -116,6 +118,24 @@ def predict_proba(
     y_prob = np.array([d["output"] for d in outputs.take_all()])
     results = []
     for i, prob in enumerate(y_prob):
+        tag = preprocessor.index_to_class[prob.argmax()]
+        results.append({"prediction": tag, "probabilities": format_prob(prob, preprocessor.index_to_class)})
+    return results
+
+
+def predict_proba_items(items: List[Dict], predictor: TorchPredictor) -> List:
+    """Predict probabilities for in-memory items without Ray Data.
+
+    This path is used by the live FastAPI service where each request is small.
+    It avoids relying on Ray's object store for every API call.
+    """
+    preprocessor = predictor.get_preprocessor()
+    default_tag = next(iter(preprocessor.class_to_index))
+    df = pd.DataFrame([{**item, "tag": item.get("tag") or default_tag} for item in items])
+    batch = data.preprocess(df=df, class_to_index=preprocessor.class_to_index)
+    y_prob = predictor.predict_proba(batch)["output"]
+    results = []
+    for prob in y_prob:
         tag = preprocessor.index_to_class[prob.argmax()]
         results.append({"prediction": tag, "probabilities": format_prob(prob, preprocessor.index_to_class)})
     return results

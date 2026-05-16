@@ -104,8 +104,10 @@ def create_standalone_app(run_id: str, threshold: float = 0.9) -> FastAPI:
             data = await request.json()
             title = data.get("title", "")
             description = data.get("description", "")
-            sample_ds = ray.data.from_items([{"title": title, "description": description, "tag": ""}])
-            results = predict.predict_proba(ds=sample_ds, predictor=predictor)
+            results = predict.predict_proba_items(
+                items=[{"title": title, "description": description}],
+                predictor=predictor,
+            )
             results = apply_prediction_threshold(results=results, threshold=threshold)
             summary = record_prediction_request(title=title, description=description, results=results)
             monitoring_metrics.record_request(endpoint="/predict/", method="POST", status="success")
