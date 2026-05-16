@@ -107,7 +107,13 @@ from madewithml.train import train_model
 
 if ray.is_initialized():
     ray.shutdown()
-ray.init(num_gpus=0, runtime_env={"env_vars": {"GITHUB_USERNAME": os.environ["GITHUB_USERNAME"]}})
+ray.init(
+    num_cpus=2,
+    num_gpus=0,
+    include_dashboard=False,
+    object_store_memory=256 * 1024 * 1024,
+    runtime_env={"env_vars": {"GITHUB_USERNAME": os.environ["GITHUB_USERNAME"]}},
+)
 
 train_model(
     experiment_name=os.environ["EXPERIMENT_NAME"],
@@ -162,7 +168,8 @@ if ray.is_initialized():
 ray.init(
     num_cpus=1,
     num_gpus=0,
-    object_store_memory=512 * 1024 * 1024,
+    include_dashboard=False,
+    object_store_memory=256 * 1024 * 1024,
     runtime_env={"env_vars": {"GITHUB_USERNAME": os.environ["GITHUB_USERNAME"]}},
 )
 
