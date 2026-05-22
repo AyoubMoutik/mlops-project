@@ -7,10 +7,11 @@ pipeline {
     }
 
     parameters {
-        string(name: 'NUM_SAMPLES', defaultValue: '100', description: 'Number of training samples for the Jenkins run.')
-        string(name: 'NUM_EPOCHS', defaultValue: '1', description: 'Number of training epochs.')
+        string(name: 'NUM_SAMPLES', defaultValue: '0', description: 'Number of training samples for the Jenkins run. Use 0 for the full dataset.')
+        string(name: 'NUM_EPOCHS', defaultValue: '6', description: 'Number of training epochs.')
         string(name: 'BATCH_SIZE', defaultValue: '16', description: 'Training batch size.')
         string(name: 'MIN_F1', defaultValue: '0.15', description: 'Minimum weighted F1 required for deployment.')
+        booleanParam(name: 'USE_GPU', defaultValue: false, description: 'Use the NVIDIA GPU for the training stage when available.')
         booleanParam(name: 'DEPLOY', defaultValue: true, description: 'Deploy locally with Ray Serve when evaluation passes.')
     }
 
@@ -102,14 +103,19 @@ import json
 import os
 
 import ray
+import torch
 
 from madewithml.train import train_model
 
 if ray.is_initialized():
     ray.shutdown()
+num_samples = int(os.environ["NUM_SAMPLES"] or "0")
+use_gpu = os.environ.get("USE_GPU", "false").lower() == "true"
+if use_gpu and not torch.cuda.is_available():
+    raise SystemExit("USE_GPU=true, but CUDA is not available inside the Docker container.")
 ray.init(
     num_cpus=2,
-    num_gpus=0,
+    num_gpus=1 if use_gpu else 0,
     include_dashboard=False,
     object_store_memory=256 * 1024 * 1024,
     runtime_env={"env_vars": {"GITHUB_USERNAME": os.environ["GITHUB_USERNAME"]}},
@@ -119,15 +125,15 @@ train_model(
     experiment_name=os.environ["EXPERIMENT_NAME"],
     dataset_loc="datasets/dataset.csv",
     train_loop_config=json.dumps({
-        "dropout_p": 0.5,
-        "lr": 0.0001,
-        "lr_factor": 0.8,
-        "lr_patience": 3,
+        "dropout_p": 0.3,
+        "lr": 0.00002,
+        "lr_factor": 0.5,
+        "lr_patience": 1,
     }),
     num_workers=1,
     cpu_per_worker=1,
-    gpu_per_worker=0,
-    num_samples=int(os.environ["NUM_SAMPLES"]),
+    gpu_per_worker=1 if use_gpu else 0,
+    num_samples=None if num_samples <= 0 else num_samples,
     num_epochs=int(os.environ["NUM_EPOCHS"]),
     batch_size=int(os.environ["BATCH_SIZE"]),
     results_fp=os.environ["TRAIN_RESULTS"],
@@ -285,6 +291,7 @@ PY
 
 void dockerRun(String command) {
     def scriptName = "docker-stage-${env.BUILD_NUMBER}.sh"
+    def gpuArgs = params.USE_GPU ? '--gpus all' : ''
     writeFile file: scriptName, text: "#!/bin/sh\nset -eux\n${command.stripIndent().trim()}\n"
     sh """
         set -eux
@@ -301,6 +308,7 @@ void dockerRun(String command) {
         docker create \
             --name "\$container_name" \
             --shm-size=3g \
+            ${gpuArgs} \
             -e GITHUB_USERNAME="\$GITHUB_USERNAME" \
             -e MLOPS_STORAGE_DIR="\$MLOPS_STORAGE_DIR" \
             -e EXPERIMENT_NAME="\$EXPERIMENT_NAME" \
@@ -310,6 +318,7 @@ void dockerRun(String command) {
             -e NUM_EPOCHS="${params.NUM_EPOCHS}" \
             -e BATCH_SIZE="${params.BATCH_SIZE}" \
             -e MIN_F1="${params.MIN_F1}" \
+            -e USE_GPU="${params.USE_GPU}" \
             -e RUN_ID="\${RUN_ID:-}" \
             -v "\$MLOPS_DOCKER_VOLUME:/mlops-storage" \
             "\$IMAGE_NAME" \

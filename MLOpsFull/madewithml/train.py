@@ -9,7 +9,6 @@ import ray
 import ray.train as train
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import typer
 from ray.air.integrations.mlflow import MLflowLoggerCallback
 from ray.data import Dataset
@@ -60,8 +59,7 @@ def train_step(
     for i, batch in enumerate(ds_generator):
         optimizer.zero_grad()  # reset gradients
         z = model(batch)  # forward pass
-        targets = F.one_hot(batch["targets"], num_classes=num_classes).float()  # one-hot (for loss_fn)
-        J = loss_fn(z, targets)  # define loss
+        J = loss_fn(z, batch["targets"])  # define loss
         J.backward()  # backward pass
         optimizer.step()  # update weights
         loss += (J.detach().item() - loss) / (i + 1)  # cumulative loss
@@ -90,8 +88,7 @@ def eval_step(
     with torch.inference_mode():
         for i, batch in enumerate(ds_generator):
             z = model(batch)
-            targets = F.one_hot(batch["targets"], num_classes=num_classes).float()  # one-hot (for loss_fn)
-            J = loss_fn(z, targets).item()
+            J = loss_fn(z, batch["targets"]).item()
             loss += (J - loss) / (i + 1)
             y_trues.extend(batch["targets"].cpu().numpy())
             y_preds.extend(torch.argmax(z, dim=1).cpu().numpy())
@@ -124,7 +121,7 @@ def train_loop_per_worker(config: dict) -> None:  # pragma: no cover, tested via
     model = train.torch.prepare_model(model)
 
     # Training components
-    loss_fn = nn.BCEWithLogitsLoss()
+    loss_fn = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", factor=lr_factor, patience=lr_patience)
 
