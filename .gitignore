@@ -8,6 +8,8 @@ MLOpsFull/logs/
 MLOpsFull/efs/
 
 report/
+screenshots/
+Screenshots.docx
 
 *.md
 !/README.md
