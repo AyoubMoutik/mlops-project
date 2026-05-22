@@ -711,10 +711,11 @@ The Jenkins job is configurable so that the same pipeline can be used for fast d
 \toprule
 Parameter & Default & Purpose \\
 \midrule
-\texttt{NUM\_SAMPLES} & \texttt{100} & Limits training samples for a fast CI execution. \\
-\texttt{NUM\_EPOCHS} & \texttt{1} & Controls training epochs. \\
+\texttt{NUM\_SAMPLES} & \texttt{0} & Uses the full dataset for the Jenkins training run. \\
+\texttt{NUM\_EPOCHS} & \texttt{6} & Controls training epochs. \\
 \texttt{BATCH\_SIZE} & \texttt{16} & Controls model training batch size. \\
-\texttt{MIN\_F1} & \texttt{0.15} & Minimum weighted F1 score required before deployment can continue. \\
+\texttt{MIN\_F1} & \texttt{0.85} & Minimum weighted F1 score required before deployment can continue. \\
+\texttt{USE\_GPU} & \texttt{true} & Enables NVIDIA GPU acceleration for the training container when available. \\
 \texttt{DEPLOY} & \texttt{true} & Enables or disables local deployment after evaluation. \\
 \bottomrule
 \end{tabularx}
@@ -736,7 +737,7 @@ This checks for syntax errors, runs the test suite, and limits Flake8 to critica
 The second gate is the model evaluation gate. The Jenkinsfile reads the weighted F1 score from \texttt{eval\_results.json} and compares it with \texttt{MIN\_F1}. If the model fails the threshold, the pipeline stops before Docker Hub publishing and deployment.
 
 \begin{infobox}{Model Quality Result}
-The successful Dockerized run produced a weighted F1 of \texttt{0.2014707645577715}, which passed the configured \texttt{MIN\_F1=0.15} threshold. This low threshold is intentional for a fast CI demonstration with \texttt{NUM\_SAMPLES=100} and \texttt{NUM\_EPOCHS=1}.
+The successful Dockerized Jenkins run produced a weighted F1 of \texttt{0.9054760519681985}. The model passed the configured \texttt{MIN\_F1=0.85} deployment gate and was promoted to the local serving stage.
 \end{infobox}
 
 \begin{figure}[H]
@@ -954,7 +955,7 @@ The first compares average text length between a reference window and a current 
 A traffic script sends repeated prediction requests to populate Prometheus and Grafana:
 
 \begin{lstlisting}[style=projectcode]
-python scripts/send_monitoring_traffic.py --url http://localhost:8000/predict/ --requests 100
+python scripts/send_monitoring_traffic.py --url http://localhost:8000/predict/ --requests 200
 \end{lstlisting}
 
 \begin{figure}[H]
@@ -967,12 +968,12 @@ python scripts/send_monitoring_traffic.py --url http://localhost:8000/predict/ -
 The monitoring traffic run produced:
 
 \begin{lstlisting}[style=projectcode]
-Total requests: 100
-HTTP 200 responses: 100
+Total requests: 200
+HTTP 200 responses: 200
 HTTP errors: 0
 \end{lstlisting}
 
-The observed model behavior was that the deployed demo model predicted \texttt{other} for all tested scenarios, with low confidence around \texttt{0.07} to \texttt{0.08}. This is not a monitoring failure. It is a useful monitoring finding: the service works, but the model quality is weak because the Jenkins demo run intentionally uses a small sample size and only one training epoch.
+The observed model behavior was consistent with the evaluation result. The deployed model produced successful predictions across the target classes, including \texttt{natural-language-processing}, \texttt{computer-vision}, \texttt{mlops}, and \texttt{other}. Prometheus recorded \texttt{230} prediction requests in total, with an average monitored confidence of approximately \texttt{0.9285}. This shows that monitoring captures both API health and model behavior after deployment.
 
 \subsubsection{Alert, Inspect, Act}
 
@@ -1000,8 +1001,8 @@ After alerting, the team should inspect metadata, thresholds, logs, reference da
 
 \begin{itemize}
     \item The monitoring setup is local and Docker-based.
-    \item The Jenkins training configuration is intentionally small for fast execution.
-    \item The final model quality is low because the demo uses \texttt{NUM\_SAMPLES=100} and \texttt{NUM\_EPOCHS=1}.
+    \item The training dataset is small and stored locally for this educational project.
+    \item The deployment gate is configurable and currently enforces a stricter weighted F1 threshold.
     \item Drift helpers exist, but they are not yet scheduled as recurring production jobs.
     \item No Alertmanager, Slack, email, or PageDuty alert routing is configured.
     \item Ray Serve remains available, but FastAPI was selected for stable local deployment.
@@ -1010,8 +1011,8 @@ After alerting, the team should inspect metadata, thresholds, logs, reference da
 \subsection{Future Improvements}
 
 \begin{itemize}
-    \item Increase training samples and epochs for stronger model quality.
-    \item Add stricter deployment thresholds once model performance improves.
+    \item Add more labeled data and scheduled retraining for broader generalization.
+    \item Calibrate deployment thresholds as production requirements evolve.
     \item Add Prometheus alert rules and Alertmanager notifications.
     \item Run drift checks on scheduled windows or event streams.
     \item Store prediction events for later audit and retraining analysis.

@@ -571,7 +571,7 @@ function processNode(s, x, y, num, title, text, color, connect = true) {
     s.addText(st[1], { x: x + 0.82, y: y + 0.48, w: 1.75, h: 0.2, fontFace: "Calibri", fontSize: 8.3, color: C.muted, margin: 0, fit: "shrink" });
   });
   card(s, 5.76, 5.74, 6.1, 0.62, { fill: "FFF9E8", line: "F4E5B5", opacity: 0.07 });
-  s.addText("Demo gate: weighted F1 = 0.20147 passed MIN_F1 = 0.15 for the fast CI run.", {
+  s.addText("Jenkins gate: weighted F1 = 0.9055 passed MIN_F1 = 0.85 and promoted the model.", {
     x: 6.07,
     y: 5.93,
     w: 5.45,
@@ -676,7 +676,7 @@ function processNode(s, x, y, num, title, text, color, connect = true) {
   });
   card(s, 1.08, 4.95, 11.1, 0.92, { fill: "F5FFF8", line: "D8F0DF", opacity: 0.08 });
   s.addText("Observed demo finding", { x: 1.42, y: 5.18, w: 1.95, h: 0.2, fontFace: "Trebuchet MS", fontSize: 10.8, bold: true, color: "2F6F46", margin: 0 });
-  s.addText("The service handled 100 prediction requests with 0 HTTP errors, but the demo model predicted the fallback class other with low confidence. Monitoring exposed a model-quality issue, not an API failure.", {
+  s.addText("The service handled 200 prediction requests with 0 HTTP errors. Monitoring showed predictions across all classes with average confidence around 0.9285.", {
     x: 3.55,
     y: 5.08,
     w: 8.1,
@@ -697,14 +697,14 @@ function processNode(s, x, y, num, title, text, color, connect = true) {
   const cols = [
     ["Current limitations", [
       "Local Docker-based stack",
-      "Small CI training sample",
-      "Low model quality in the demo run",
+      "Small local training dataset",
+      "Stricter F1 deployment gate",
       "Drift helpers are not scheduled",
       "No alert routing yet",
     ], C.pink],
     ["Next improvements", [
-      "Train longer with more data",
-      "Raise deployment thresholds",
+      "Add more labeled training data",
+      "Calibrate release thresholds",
       "Add Prometheus alert rules",
       "Store prediction events",
       "Move toward Kubernetes or managed ML",

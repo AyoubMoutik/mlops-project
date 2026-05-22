@@ -199,13 +199,14 @@ The pipeline is configurable with:
 
 | Parameter | Default | Purpose |
 |---|---:|---|
-| `NUM_SAMPLES` | `100` | Number of training samples used for the CI run. |
-| `NUM_EPOCHS` | `1` | Number of training epochs. |
+| `NUM_SAMPLES` | `0` | Use the full dataset for the CI training run. |
+| `NUM_EPOCHS` | `6` | Number of training epochs. |
 | `BATCH_SIZE` | `16` | Training batch size. |
-| `MIN_F1` | `0.15` | Minimum weighted F1 required for deployment in the fast CI demo. |
+| `MIN_F1` | `0.85` | Minimum weighted F1 required for deployment. |
+| `USE_GPU` | `true` | Use the NVIDIA GPU for the training stage when available. |
 | `DEPLOY` | `true` | Enables or disables the deployment stage. |
 
-The values are intentionally small so that the complete MLOps workflow can run in Jenkins without requiring a long training job.
+The values keep the workflow practical while still training on the full dataset and using GPU acceleration when available.
 
 ## Docker Image Build
 
@@ -323,16 +324,16 @@ MLOpsFull/artifacts/eval_results.json
 The successful Dockerized run produced:
 
 ```text
-Weighted F1: 0.2014707645577715
+Weighted F1: 0.9054760519681985
 ```
 
 The build passed because:
 
 ```text
-MIN_F1=0.15
+MIN_F1=0.85
 ```
 
-This threshold is intentionally low for the fast CI demonstration. It validates the MLOps automation path, not final model quality.
+The build passed the configured model quality gate and continued to image publishing and deployment.
 
 ## Docker Hub Push
 
@@ -433,7 +434,7 @@ The build completed these stages:
 Observed evaluation result:
 
 ```text
-Weighted F1: 0.2014707645577715
+Weighted F1: 0.9054760519681985
 ```
 
 Docker Hub image pushed:
@@ -491,22 +492,21 @@ curl -X POST http://localhost:8000/predict/ `
 
 ## Notes About Model Quality
 
-The model quality is intentionally limited in the CI run because the pipeline uses:
+The CI run trains on the full local dataset with multiple epochs:
 
 ```text
-NUM_SAMPLES=100
-NUM_EPOCHS=1
+NUM_SAMPLES=0
+NUM_EPOCHS=6
+USE_GPU=true
 ```
 
-This keeps Jenkins execution time acceptable for the assignment demonstration.
-
-The low threshold:
+The deployment gate remains configurable:
 
 ```text
-MIN_F1=0.15
+MIN_F1=0.85
 ```
 
-is used only to validate the full CI/CD workflow. A production training run should increase the sample count, train for more epochs, and raise the deployment threshold.
+The successful Jenkins run produced a weighted F1 of `0.9054760519681985`, passed the stricter `MIN_F1=0.85` gate, created a tracked MLflow run, pushed the Docker image, and deployed the service after smoke checks passed.
 
 ## Evidence To Capture For The Report
 

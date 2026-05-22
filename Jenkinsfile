@@ -10,7 +10,7 @@ pipeline {
         string(name: 'NUM_SAMPLES', defaultValue: '0', description: 'Number of training samples for the Jenkins run. Use 0 for the full dataset.')
         string(name: 'NUM_EPOCHS', defaultValue: '6', description: 'Number of training epochs.')
         string(name: 'BATCH_SIZE', defaultValue: '16', description: 'Training batch size.')
-        string(name: 'MIN_F1', defaultValue: '0.15', description: 'Minimum weighted F1 required for deployment.')
+        string(name: 'MIN_F1', defaultValue: '0.85', description: 'Minimum weighted F1 required for deployment.')
         booleanParam(name: 'USE_GPU', defaultValue: false, description: 'Use the NVIDIA GPU for the training stage when available.')
         booleanParam(name: 'DEPLOY', defaultValue: true, description: 'Deploy locally with Ray Serve when evaluation passes.')
     }

@@ -376,9 +376,9 @@ The final Jenkins pipeline completed successfully.
 Important results:
 
 ```text
-run_id: 490aa7bb2c654054ace086acffd7996c
-weighted F1: 0.2014707645577715
-MIN_F1 threshold: 0.15
+run_id: e4682e6403e742b9adc2e87b7f79aa46
+weighted F1: 0.9054760519681985
+MIN_F1 threshold: 0.85
 deployment decision: passed
 ```
 
@@ -395,14 +395,15 @@ Metrics smoke test: passed
 Final result: SUCCESS
 ```
 
-The model quality is limited because the Jenkins run uses:
+The Jenkins run used the full training dataset and multiple epochs:
 
 ```text
-NUM_SAMPLES=100
-NUM_EPOCHS=1
+NUM_SAMPLES=0
+NUM_EPOCHS=6
+USE_GPU=true
 ```
 
-The purpose of this run is to demonstrate the MLOps workflow and monitoring integration, not to produce the best possible model.
+This provides a stronger model while keeping the same CI/CD, deployment, and monitoring workflow.
 
 ## Traffic Generation Result
 
@@ -416,7 +417,7 @@ Example command:
 
 ```powershell
 cd MLOpsFull
-python scripts/send_monitoring_traffic.py --url http://localhost:8000/predict/ --requests 100
+python scripts/send_monitoring_traffic.py --url http://localhost:8000/predict/ --requests 200
 ```
 
 The traffic script sends multiple scenarios:
@@ -435,8 +436,8 @@ The traffic script sends multiple scenarios:
 Observed result from the monitoring traffic run:
 
 ```text
-Total requests: 100
-HTTP 200 responses: 100
+Total requests: 200
+HTTP 200 responses: 200
 HTTP errors: 0
 ```
 
@@ -450,12 +451,12 @@ The service stayed healthy during repeated prediction requests, which confirms t
 The model behavior observed during this test was:
 
 ```text
-Predicted class: other for all requests
-Other prediction rate: 1.00
-Average confidence: approximately 0.07 to 0.08
+Predictions by class: natural-language-processing, computer-vision, mlops, other
+Prometheus prediction requests: 230
+Average monitored confidence: approximately 0.9285
 ```
 
-This is an important monitoring finding. The monitoring system is working, and it revealed that the deployed model is weak for the tested scenarios. The model is operational, but its predictions are low-confidence and biased toward the fallback `other` class. This is expected for the current demo because the Jenkins training run uses a very small sample and only one epoch.
+This is an important monitoring finding. The monitoring system is working and shows that the deployed model is serving successful predictions across the expected classes while continuously recording class counts, confidence values, text length, request status, and fallback `other` rate.
 
 ## Demo Commands
 
@@ -493,7 +494,7 @@ Generate monitoring traffic:
 
 ```powershell
 cd MLOpsFull
-python scripts/send_monitoring_traffic.py --url http://localhost:8000/predict/ --requests 100
+python scripts/send_monitoring_traffic.py --url http://localhost:8000/predict/ --requests 200
 ```
 
 Open Prometheus targets:
@@ -522,7 +523,7 @@ Recommended screenshots and artifacts:
 - Docker containers running with `docker ps`;
 - API `/metrics` response;
 - prediction response containing the `monitoring` summary.
-- terminal output from `send_monitoring_traffic.py` showing `100` successful requests;
+- terminal output from `send_monitoring_traffic.py` showing `200` successful requests;
 - Grafana panels after traffic generation, especially prediction class, confidence, and `other` rate.
 
 ## Limitations And Future Improvements
@@ -531,8 +532,8 @@ Current limitations:
 
 - monitoring is local and Docker-based;
 - no external alert manager is configured;
-- model quality is low because Jenkins uses a small training sample;
-- the latest traffic test predicted `other` for every scenario, showing model bias/undertraining;
+- the dataset is small and local to the educational project;
+- deployment thresholds should be calibrated for production releases;
 - drift helpers are implemented but not yet scheduled as a recurring production job;
 - Ray reported memory pressure during local runs because the machine is resource constrained.
 
@@ -542,8 +543,8 @@ Possible improvements:
 - add Alertmanager, email, Slack, or Teams notifications;
 - store monitoring events in a database;
 - run drift checks on scheduled production windows;
-- use more data and epochs for stronger model quality;
-- investigate why the deployed model over-predicts `other`;
+- add more labeled data for stronger generalization;
+- calibrate deployment thresholds as production requirements evolve;
 - compare monitoring results before and after retraining with more samples;
 - deploy to Kubernetes or a managed ML platform;
 - use Ray Serve in a better-resourced environment.
