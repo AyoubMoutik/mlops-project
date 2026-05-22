@@ -5,14 +5,14 @@ Learn how to monitor ML systems to identify and address sources of drift before 
 
 - [Performance](#performance)
 - [Drift](#drift)
-    - [Data drift](#data-drift)
-    - [Target drift](#target-drift)
-    - [Concept drift](#concept-drift)
+     - [Data drift](#data-drift)
+     - [Target drift](#target-drift)
+     - [Concept drift](#concept-drift)
 - [Locating drift](#locating-drift)
 - [Measuring drift](#measuring-drift)
-    - [Expectations](#expectations)
-    - [Univariate](#univariate)
-    - [Multivariate](#multivariate)
+     - [Expectations](#expectations)
+     - [Univariate](#univariate)
+     - [Multivariate](#multivariate)
 - [Online](#online)
 
 ## Performance
