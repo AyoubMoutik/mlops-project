@@ -49,7 +49,7 @@ def summarize_predictions(results: Sequence[Mapping]) -> Dict:
 
 def _normal_cdf(value: float) -> float:
     return 0.5 * (1.0 + erf(value / sqrt(2.0)))
-
+ 
 
 def detect_text_length_drift(
     reference_lengths: Iterable[float],
